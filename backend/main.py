@@ -72,16 +72,8 @@ class FileItem(BaseModel):
     """Modelo para representar un archivo en el listado"""
     name: str
     key: str
-    size_bytes: int
-    last_modified: str
-    etag: str
-    isDuplicate: bool
-
-
-class FileListResponse(BaseModel):
-    """Modelo de respuesta para listar archivos"""
-    files: list[FileItem]
-    total_count: int
+    size: int
+    lastModified: str
 
 
 class DeleteFileResponse(BaseModel):
@@ -207,20 +199,14 @@ async def get_presigned_url(request: PresignedUrlRequest):
         )
 
 
-@app.get("/api/files", response_model=FileListResponse)
+@app.get("/api/files", response_model=list[FileItem])
 async def list_files():
     """
     Endpoint para listar todos los archivos en el prefijo 'uploads/' del bucket S3 (CU-02).
-    Detecta y marca duplicados por nombre o ETag (Contenido Feature Extra).
-    
-    Returns:
-        FileListResponse con lista de archivos (nombre, key, tamaño, fecha, isDuplicate)
-    
-    Raises:
-        HTTPException: Si hay error al acceder a S3
+    Devuelve una lista plana de objetos JSON con name, key, size y lastModified.
     """
     try:
-        files_raw = []
+        files: list[FileItem] = []
         
         # Listar todos los objetos con prefijo 'uploads/'
         paginator = s3_client.get_paginator("list_objects_v2")
@@ -231,62 +217,25 @@ async def list_files():
                 continue
             
             for obj in page["Contents"]:
-                # Obtener nombre del archivo (sin el prefijo)
                 key = obj["Key"]
-                file_name = key.replace("uploads/", "", 1)
+                if key == "uploads/":
+                    # Ignorar la carpeta vacía o marcador de prefijo
+                    continue
                 
-                # Formatear fecha de modificación
+                file_name = key.replace("uploads/", "", 1)
                 last_modified = obj["LastModified"].isoformat()
                 
-                # Obtener ETag (hash MD5 del contenido)
-                etag = obj.get("ETag", "").strip('"')
-                
-                files_raw.append({
-                    "name": file_name,
-                    "key": key,
-                    "size_bytes": obj["Size"],
-                    "last_modified": last_modified,
-                    "etag": etag
-                })
-        
-        # ====================================================================
-        # DETECCIÓN DE DUPLICADOS (Feature Extra)
-        # ====================================================================
-        # 1. Contar ocurrencias de cada nombre
-        name_count = {}
-        etag_count = {}
-        
-        for file in files_raw:
-            name = file["name"]
-            etag = file["etag"]
-            name_count[name] = name_count.get(name, 0) + 1
-            etag_count[etag] = etag_count.get(etag, 0) + 1
-        
-        # 2. Marcar como duplicado si nombre o etag aparecen más de una vez
-        files = []
-        for file in files_raw:
-            is_duplicate = (
-                name_count.get(file["name"], 0) > 1 or 
-                etag_count.get(file["etag"], 0) > 1
-            )
-            
-            files.append(
-                FileItem(
-                    name=file["name"],
-                    key=file["key"],
-                    size_bytes=file["size_bytes"],
-                    last_modified=file["last_modified"],
-                    etag=file["etag"],
-                    isDuplicate=is_duplicate
+                files.append(
+                    FileItem(
+                        name=file_name,
+                        key=key,
+                        size=obj["Size"],
+                        lastModified=last_modified,
+                    )
                 )
-            )
         
-        return FileListResponse(
-            files=files,
-            total_count=len(files)
-        )
-    
-    except Exception as e:
+        return files
+    except Exception:
         # (SEC-07) No exponer trazas de código sensibles
         raise HTTPException(
             status_code=500,
