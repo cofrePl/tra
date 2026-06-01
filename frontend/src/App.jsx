@@ -211,7 +211,14 @@ function App() {
                       <tr key={file.key}>
                         <td className="file-name">
                           <span className="file-icon">🎬</span>
-                          <span>{file.name}</span>
+                          <div className="file-name-wrapper">
+                            <span>{file.name}</span>
+                            {file.isDuplicate && (
+                              <span className="duplicate-badge" title="Duplicado por mismo nombre o mismo contenido">
+                                ⚠️ Duplicado (Mismo nombre o contenido)
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td>{formatFileSizeMB(file.size)}</td>
                         <td>{formatDate(file.lastModified)}</td>
