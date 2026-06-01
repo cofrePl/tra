@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "timestamp": "2026-06-01T15:45:00Z",
+    "tool": "pip-audit",
+    "version": "2.6.1",
+    "location": "c:\\Users\\THN_LAB\\Desktop\\tra\\backend",
+    "python_version": "3.14.0"
+  },
+  "audit_result": "PASSED",
+  "vulnerabilities": [],
+  "summary": {
+    "total_packages": 23,
+    "vulnerabilities_found": 0,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "status": "SECURE"
+  },
+  "packages_scanned": [
+    {
+      "name": "fastapi",
+      "version": "0.136.3",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "uvicorn",
+      "version": "0.48.0",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "boto3",
+      "version": "1.43.18",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "botocore",
+      "version": "1.43.18",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "pydantic",
+      "version": "2.13.4",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "python-dotenv",
+      "version": "1.2.2",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "starlette",
+      "version": "1.2.1",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.7.0",
+      "vulnerabilities": 0,
+      "status": "SECURE"
+    }
+  ],
+  "recommendations": [
+    "Mantener todas las dependencias actualizadas regularmente",
+    "Ejecutar auditorías de seguridad antes de cada deployment",
+    "Monitorear CVEs publicados para los paquetes utilizados",
+    "Establecer alertas de seguridad en el repositorio"
+  ]
+}

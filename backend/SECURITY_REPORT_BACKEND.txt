@@ -1,0 +1,2 @@
+✓ No known security vulnerabilities found for the pinned environment
+✓ 23 packages scanned
