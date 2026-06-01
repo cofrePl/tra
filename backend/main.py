@@ -7,8 +7,9 @@ from urllib.parse import quote
 import boto3
 from botocore.config import Config
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, CORSMiddleware
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, field_validator
+from starlette.middleware.cors import CORSMiddleware
 
 # Cargar variables de entorno de forma segura
 load_dotenv()
