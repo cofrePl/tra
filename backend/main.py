@@ -74,6 +74,7 @@ class FileItem(BaseModel):
     key: str
     size: int
     lastModified: str
+    isDuplicate: bool
 
 
 class DeleteFileResponse(BaseModel):
@@ -206,7 +207,7 @@ async def list_files():
     Devuelve una lista plana de objetos JSON con name, key, size y lastModified.
     """
     try:
-        files: list[FileItem] = []
+        raw_files = []
         
         # Listar todos los objetos con prefijo 'uploads/'
         paginator = s3_client.get_paginator("list_objects_v2")
@@ -224,16 +225,39 @@ async def list_files():
                 
                 file_name = key.replace("uploads/", "", 1)
                 last_modified = obj["LastModified"].isoformat()
+                etag = obj.get("ETag", "").strip('"')
                 
-                files.append(
-                    FileItem(
-                        name=file_name,
-                        key=key,
-                        size=obj["Size"],
-                        lastModified=last_modified,
-                    )
+                raw_files.append({
+                    "name": file_name,
+                    "key": key,
+                    "size": obj["Size"],
+                    "lastModified": last_modified,
+                    "etag": etag,
+                })
+
+        name_counts = {}
+        etag_counts = {}
+        for file in raw_files:
+            name_counts[file["name"]] = name_counts.get(file["name"], 0) + 1
+            if file["etag"]:
+                etag_counts[file["etag"]] = etag_counts.get(file["etag"], 0) + 1
+
+        files = []
+        for file in raw_files:
+            is_duplicate = (
+                name_counts.get(file["name"], 0) > 1 or
+                (file["etag"] and etag_counts.get(file["etag"], 0) > 1)
+            )
+            files.append(
+                FileItem(
+                    name=file["name"],
+                    key=file["key"],
+                    size=file["size"],
+                    lastModified=file["lastModified"],
+                    isDuplicate=is_duplicate,
                 )
-        
+            )
+
         return files
     except Exception:
         # (SEC-07) No exponer trazas de código sensibles
