@@ -29,15 +29,17 @@ app.add_middleware(
 )
 
 # ============================================================================
-# CONFIGURACIÓN DE AWS BOTO3 - Región us-west-2 con firma V4
+# CONFIGURACIÓN DE AWS BOTO3 - Región y bucket desde variables de entorno
 # ============================================================================
+AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
+BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "archivacloud-p11")
+
 s3_client = boto3.client(
     "s3",
-    region_name="us-west-2",
+    region_name=AWS_REGION,
     config=Config(signature_version="s3v4")
 )
 
-BUCKET_NAME = "archivacloud-p11"
 PRESIGNED_URL_EXPIRATION = 3600  # 1 hora en segundos
 
 # ============================================================================
