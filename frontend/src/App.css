@@ -147,6 +147,25 @@
   animation: slideIn 0.3s ease;
 }
 
+.message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.message.error {
+  background: #fff4e5;
+  color: #663c00;
+  border-left: 4px solid #f59e0b;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -165,9 +184,9 @@
 }
 
 .alert-error {
-  background: #f8d7da;
-  color: #721c24;
-  border-left: 4px solid #f5222d;
+  background: #fff4e5;
+  color: #663c00;
+  border-left: 4px solid #f59e0b;
 }
 
 /* FILES SECTION - CU-02, CU-03, CU-04 */
@@ -257,14 +276,14 @@
 
 .duplicate-badge {
   display: inline-block;
-  background: #ffe5e5;
-  color: #9b1c1c;
+  background: #fff4e5;
+  color: #663c00;
   padding: 0.35rem 0.85rem;
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 700;
   width: fit-content;
-  border: 1px solid rgba(155, 28, 28, 0.15);
+  border: 1px solid rgba(245, 159, 11, 0.15);
 }
 
 @keyframes pulse {
@@ -313,14 +332,14 @@
 }
 
 .delete-btn {
-  background: #f5222d;
+  background: #f59e0b;
   color: white;
 }
 
 .delete-btn:hover {
-  background: #d32f2f;
+  background: #d97706;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(245, 34, 45, 0.3);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
 }
 
 .table-hint {

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import './App.css'
 
 const BACKEND_URL = 'http://localhost:8000'
-const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov']
 const S3_BASE_URL = 'https://archivacloud-p11.s3.us-west-2.amazonaws.com'
 
@@ -12,8 +12,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const [message, setMessage] = useState({ text: '', type: '' })
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -24,22 +23,21 @@ function App() {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/files`)
       setFiles(response.data)
-      setErrorMessage('')
+      setMessage({ text: '', type: '' })
     } catch (error) {
-      console.error('Error al obtener archivos:', error)
-      setErrorMessage('No se pudo cargar la lista de archivos. Intenta de nuevo.')
+      setMessage({ text: 'Error al cargar archivos. Intenta de nuevo.', type: 'error' })
     }
   }
 
   const validateFile = (file) => {
-    const extension = '.' + file.name.split('.').pop().toLowerCase()
+    const extension = `.${file.name.split('.').pop().toLowerCase()}`
     if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      setErrorMessage('❌ Solo se permiten archivos .mp4 o .mov.')
+      setMessage({ text: 'Solo se permiten archivos .mp4 y .mov.', type: 'error' })
       return false
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage(`❌ El archivo excede 100 MB. Tamaño: ${(file.size / 1024 / 1024).toFixed(2)} MB`)
+      setMessage({ text: `El archivo excede 100 MB. Tamaño: ${(file.size / 1024 / 1024).toFixed(2)} MB`, type: 'error' })
       return false
     }
 
@@ -60,20 +58,18 @@ function App() {
     }
 
     setSelectedFile(file)
-    setErrorMessage('')
-    setSuccessMessage('')
+    setMessage({ text: '', type: '' })
   }
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      setErrorMessage('Selecciona primero un archivo válido antes de subir.')
+      setMessage({ text: 'Selecciona primero un archivo válido antes de subir.', type: 'error' })
       return
     }
 
     setUploading(true)
     setUploadProgress(0)
-    setErrorMessage('')
-    setSuccessMessage('')
+    setMessage({ text: '', type: '' })
 
     try {
       const fileName = selectedFile.name
@@ -82,25 +78,26 @@ function App() {
       const presignedResponse = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
         fileName,
         fileType,
+        fileSize: selectedFile.size,
       })
 
       const { presignedUrl } = presignedResponse.data
 
       await axios.put(presignedUrl, selectedFile, {
         headers: { 'Content-Type': selectedFile.type },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          setUploadProgress(percentCompleted)
+        onUploadProgress: (event) => {
+          if (event.total) {
+            setUploadProgress(Math.round((event.loaded * 100) / event.total))
+          }
         },
       })
 
-      setSuccessMessage(`✅ Archivo subido exitosamente: ${fileName}`)
+      setMessage({ text: `Archivo subido exitosamente: ${fileName}`, type: 'success' })
       setSelectedFile(null)
-      fileInputRef.current.value = ''
+      if (fileInputRef.current) fileInputRef.current.value = ''
       await fetchFiles()
     } catch (error) {
-      console.error('Error en la subida:', error)
-      setErrorMessage('❌ Error al subir el archivo. Intenta nuevamente.')
+      setMessage({ text: 'Error al subir el archivo. Intenta nuevamente.', type: 'error' })
     } finally {
       setUploading(false)
       setUploadProgress(0)
@@ -108,146 +105,97 @@ function App() {
   }
 
   const handleDelete = async (key) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
-      return
-    }
+    if (!window.confirm('¿Estás seguro que deseas eliminar este archivo?')) return
 
     try {
       await axios.delete(`${BACKEND_URL}/api/files/${encodeURIComponent(key)}`)
-      setSuccessMessage('✅ Archivo eliminado exitosamente.')
-      setErrorMessage('')
+      setMessage({ text: 'Archivo eliminado exitosamente.', type: 'success' })
       await fetchFiles()
     } catch (error) {
-      console.error('Error al eliminar:', error)
-      setErrorMessage('❌ No se pudo eliminar el archivo. Intenta nuevamente.')
+      setMessage({ text: 'No se pudo eliminar el archivo. Intenta nuevamente.', type: 'error' })
     }
   }
 
-  const formatFileSizeMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`
-
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const formatSize = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`
+  const formatDate = (date) => new Date(date).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>🎬 ArchivaCloud</h1>
-        <p className="subtitle">Gestor de videos para P-11 conectado a localhost</p>
+        <h1>ArchivaCloud</h1>
+        <p>Sube videos .mp4 / .mov a S3 usando URL firmadas.</p>
       </header>
 
-      <main className="app-main">
-        <section className="upload-section">
-          <div className="upload-card">
-            <h2>📤 Subir video</h2>
+      <section className="upload-panel">
+        <div className="card">
+          <h2>Subir archivo</h2>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".mp4,.mov"
+            onChange={handleFileChange}
+            disabled={uploading}
+          />
+          <button onClick={handleUpload} disabled={uploading || !selectedFile}>
+            {uploading ? 'Subiendo...' : 'Subir archivo'}
+          </button>
+          <p className="hint">Máximo 100 MB. Solo .mp4 y .mov.</p>
 
-            <div className="upload-input-wrapper">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".mp4,.mov"
-                onChange={handleFileChange}
-                disabled={uploading}
-                className="file-input"
-                id="file-input"
-              />
-              <label htmlFor="file-input" className={`upload-button ${uploading ? 'disabled' : ''}`}>
-                {uploading ? '⏳ Seleccionando...' : '📁 Seleccionar archivo'}
-              </label>
+          {uploading && (
+            <div className="progress-wrapper">
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
+              </div>
+              <span>{uploadProgress}%</span>
             </div>
+          )}
 
-            <button
-              className="upload-button"
-              type="button"
-              onClick={handleUpload}
-              disabled={uploading || !selectedFile}
-              style={{ marginTop: '1rem' }}
-            >
-              {uploading ? '⏳ Subiendo...' : '🚀 Iniciar subida'}
-            </button>
+          {message.text && (
+            <div className={`message ${message.type === 'error' ? 'error' : 'success'}`}>
+              {message.text}
+            </div>
+          )}
+        </div>
+      </section>
 
-            <p className="upload-hint">Formados permitidos: .mp4, .mov · Máximo 100 MB</p>
+      <section className="files-panel">
+        <div className="card">
+          <h2>Archivos en el bucket</h2>
 
-            {uploading && (
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
-                </div>
-                <p className="progress-text">{uploadProgress}% completado</p>
-              </div>
-            )}
-
-            {errorMessage && <div className="alert alert-error">{errorMessage}</div>}
-            {successMessage && <div className="alert alert-success">{successMessage}</div>}
-          </div>
-        </section>
-
-        <section className="files-section">
-          <div className="files-card">
-            <h2>📹 Videos subidos</h2>
-
-            {files.length === 0 ? (
-              <div className="empty-state">
-                <p>No hay videos aún. Sube tu primer video.</p>
-              </div>
-            ) : (
-              <div className="files-table-wrapper">
-                <table className="files-table">
-                  <thead>
-                    <tr>
-                      <th>Nombre del archivo</th>
-                      <th>Tamaño</th>
-                      <th>Fecha</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {files.map((file) => (
-                      <tr key={file.key}>
-                        <td className="file-name">
-                          <span className="file-icon">🎬</span>
-                          <div className="file-name-wrapper">
-                            <span>{file.name}</span>
-                            {file.isDuplicate && (
-                              <span className="duplicate-badge" title="Duplicado por mismo nombre o mismo contenido">
-                                ⚠️ Duplicado (Mismo nombre o contenido)
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td>{formatFileSizeMB(file.size)}</td>
-                        <td>{formatDate(file.lastModified)}</td>
-                        <td className="actions-cell">
-                          <a
-                            href={`${S3_BASE_URL}/${encodeURIComponent(file.key)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="action-btn download-btn"
-                          >
-                            Abrir/Descargar
-                          </a>
-                          <button
-                            className="action-btn delete-btn"
-                            type="button"
-                            onClick={() => handleDelete(file.key)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
-      </main>
+          {files.length === 0 ? (
+            <p>No hay archivos cargados aún.</p>
+          ) : (
+            <table className="files-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tamaño</th>
+                  <th>Fecha</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {files.map((file) => (
+                  <tr key={file.key} className={file.isDuplicate ? 'duplicate-row' : ''}>
+                    <td>
+                      {file.name}
+                      {file.isDuplicate && <span className="duplicate-label">Duplicado</span>}
+                    </td>
+                    <td>{formatSize(file.size)}</td>
+                    <td>{formatDate(file.lastModified)}</td>
+                    <td>
+                      <a href={`${S3_BASE_URL}/${encodeURIComponent(file.key)}`} target="_blank" rel="noreferrer">
+                        Abrir
+                      </a>
+                      <button onClick={() => handleDelete(file.key)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
     </div>
   )
 }
