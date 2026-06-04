@@ -32,26 +32,37 @@ AWS_REGION=us-west-2
 S3_BUCKET_NAME=archivacloud-p11
 ```
 
-Recomendación: copiar `.env.example` a `.env` y no incluir el archivo `.env` en el control de versiones.
+Recomendación: copiar `backend/.env.example` a `backend/.env` y no incluir el archivo `.env` en el control de versiones.
+
+Para ver el prompt exacto y la guía paso a paso de AWS Academy, consulta `docs/aws-s3-p11-setup.md`.
 
 ## Política IAM Mínima en Formato JSON
 
-La política IAM mínima para el proyecto concede únicamente las cuatro acciones necesarias sobre el bucket `archivacloud-p11` y su prefijo `uploads/`:
+La política IAM mínima para el proyecto concede solo los permisos necesarios para la lectura, escritura y eliminación en el prefijo `uploads/` del bucket `archivacloud-p11`:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "ListBucket",
       "Effect": "Allow",
       "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::archivacloud-p11",
+        "arn:aws:s3:::archivacloud-p11"
+      ]
+    },
+    {
+      "Sid": "ObjectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
         "arn:aws:s3:::archivacloud-p11/uploads/*"
       ]
     }
@@ -61,16 +72,24 @@ La política IAM mínima para el proyecto concede únicamente las cuatro accione
 
 ## Configuración CORS del Bucket en JSON
 
-El bucket `archivacloud-p11` debe configurar CORS para permitir únicamente el frontend local y los métodos usados por la aplicación:
+El bucket `archivacloud-p11` debe configurar CORS para permitir únicamente los orígenes locales del frontend y los métodos usados por la aplicación:
 
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:5173"],
-    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "PUT",
+      "POST",
+      "DELETE"
+    ],
     "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
+    "ExposeHeaders": [],
+    "MaxAgeSeconds": 3000
   }
 ]
 ```
