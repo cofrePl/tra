@@ -210,3 +210,19 @@ async def startup_event():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+@app.get("/download-url")
+def get_download_url(filename: str):
+    try:
+        # Generar una URL firmada para LEER el archivo (dura 1 hora)
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': BUCKET_NAME, 
+                'Key': f"{UPLOAD_PREFIX}{filename}"
+            },
+            ExpiresIn=3600
+        )
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

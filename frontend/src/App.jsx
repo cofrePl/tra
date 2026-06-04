@@ -5,7 +5,6 @@ import './App.css'
 const BACKEND_URL = 'http://localhost:8000'
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov']
-const S3_BASE_URL = 'https://archivacloud-p11-seba.s3.us-east-1.amazonaws.com/uploads/${file.name}'
 
 function App() {
   const [files, setFiles] = useState([])
@@ -104,6 +103,19 @@ function App() {
     }
   }
 
+  const handleOpen = async (fileName) => {
+    try {
+      // Le pedimos al backend que genere la URL firmada de lectura
+      const response = await axios.get(`${BACKEND_URL}/download-url`, {
+        params: { filename: fileName }
+      })
+      // Abrimos esa URL segura en una pestaña nueva
+      window.open(response.data.url, '_blank')
+    } catch (error) {
+      setMessage({ text: 'No se pudo obtener el enlace del archivo.', type: 'error' })
+    }
+  }
+
   const handleDelete = async (key) => {
     if (!window.confirm('¿Estás seguro que deseas eliminar este archivo?')) return
 
@@ -184,10 +196,12 @@ function App() {
                     <td>{formatSize(file.size)}</td>
                     <td>{formatDate(file.lastModified)}</td>
                     <td>
-                      <a href={`${S3_BASE_URL}/${encodeURIComponent(file.key)}`} target="_blank" rel="noreferrer">
+                      <button onClick={() => handleOpen(file.name)} style={{ marginRight: '10px' }}>
                         Abrir
-                      </a>
-                      <button onClick={() => handleDelete(file.key)}>Eliminar</button>
+                      </button>
+                      <button onClick={() => handleDelete(file.key)}>
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))}
