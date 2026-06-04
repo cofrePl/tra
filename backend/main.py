@@ -12,8 +12,8 @@ from starlette.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-AWS_REGION = "us-west-2"
-BUCKET_NAME = "archivacloud-p11"
+AWS_REGION = "us-east-1"
+BUCKET_NAME = "archivacloud-p11-seba"
 MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 UPLOAD_PREFIX = "uploads/"
 PRESIGNED_URL_EXPIRATION = 3600
@@ -34,6 +34,9 @@ s3_client = boto3.client(
     "s3",
     region_name=AWS_REGION,
     config=Config(signature_version="s3v4"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    aws_session_token=os.getenv("AWS_SESSION_TOKEN")
 )
 
 
