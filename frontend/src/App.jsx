@@ -5,7 +5,7 @@ import './App.css'
 const BACKEND_URL = 'http://localhost:8000'
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov']
-const S3_BASE_URL = 'https://archivacloud-p11.s3.us-west-2.amazonaws.com'
+const S3_BASE_URL = 'https://archivacloud-p11-seba.s3.us-east-1.amazonaws.com/uploads/${file.name}'
 
 function App() {
   const [files, setFiles] = useState([])
