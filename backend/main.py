@@ -226,3 +226,7 @@ def get_download_url(filename: str):
         return {"url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/healthz")
+async def health_check():
+    return {"status": "ok", "message": "El servidor está funcionando correctamente"}        
