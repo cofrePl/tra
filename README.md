@@ -9,8 +9,8 @@ Aplicación web para gestión segura de videos que permite subir, listar, descar
 ## Integrantes
 
 - Pareja P-11
-- Integrante 1: [Nombre del integrante 1]
-- Integrante 2: [Nombre del integrante 2]
+- Integrante 1: [sebastian cofre]
+- Integrante 2: [lucas espinoza]
 
 ## Fila de Parámetros del Anexo B
 
