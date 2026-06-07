@@ -2,160 +2,157 @@
 
 ## 1. Introducción
 
-Este documento detalla la implementación de los 10 controles de seguridad exigidos (SEC-01 a SEC-10) en el proyecto ArchivaCloud de la Pareja P-11. El sistema implementa un gestor de videos con backend en FastAPI, frontend en React 18 y almacenamiento en AWS S3.
+Este documento detalla cómo implementamos los 10 controles de seguridad exigidos (SEC-01 a SEC-10) en ArchivaCloud, nuestro gestor de videos. El sistema está construido con FastAPI en el backend, React 18 en el frontend, y AWS S3 para almacenar los videos.
 
-**Requisitos del proyecto:**
+**Lo que necesitábamos cumplir:**
 - **Formato permitido:** MP4 / MOV
 - **Tamaño máximo:** 100 MB
 - **Bucket S3:** archivacloud-p11
 - **Región:** us-west-2
 - **Origen autorizado:** http://localhost:5173
 
-El diseño técnico garantiza que la protección de datos y operaciones cumple con los estándares de seguridad mínimos requeridos.
+A continuación te mostramos cómo aseguramos cada aspecto del sistema.
 
 ---
 
 ## 2. SEC-01: Secretos fuera del repositorio
 
-Las credenciales de AWS no se subieron a GitHub. Se utiliza un archivo `.env` local que fue incluido en el `.gitignore` desde el primer commit.
+Nunca subimos nuestras credenciales de AWS a GitHub. Desde el primer commit, usamos un archivo `.env` local que está en el `.gitignore`. Si alguien accede al repositorio, no encuentra nada sensible.
 
-**Implementación técnica:**
-- El backend carga variables de entorno con `python-dotenv` y `os.environ`
-- Se provee un archivo de ejemplo `.env.example` con las variables necesarias
-- Variables esperadas:
+**Cómo lo hicimos:**
+- El backend carga todo desde variables de entorno usando `python-dotenv`
+- Proporcionamos un `.env.example` para que otros sepan qué variables necesitan
+- Variables principales:
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
   - `AWS_REGION` (us-west-2)
   - `S3_BUCKET_NAME` (archivacloud-p11)
-- Claves nunca se encuentran incrustadas en el código fuente
+- Las claves nunca están hardcodeadas en el código
 
 ---
 
 ## 3. SEC-02: CORS restrictivo
 
-Se configuró el bucket S3 para que rechace peticiones de cualquier origen excepto de nuestro frontend de desarrollo en `http://localhost:5173`.
+No queremos que cualquier sitio web en internet pueda llamar a nuestras APIs. Solo permitimos requests desde nuestro frontend en `http://localhost:5173`.
 
-**Implementación técnica:**
-- FastAPI agrega middleware CORS con origen autorizado exclusivo
-- Solo se aceptan solicitudes desde `http://localhost:5173`
-- Evita que sitios no confiables consuman las APIs REST de la aplicación desde otros orígenes
+**Cómo lo hicimos:**
+- FastAPI tiene un middleware CORS que solo acepta ese origen
+- Si alguien intenta desde otro sitio, la petición se bloquea automáticamente
+- Esto evita ataques desde páginas maliciosas
 
 ---
 
 ## 4. SEC-03: Validación de entrada
 
-El frontend y el backend validan estrictamente que los archivos subidos coincidan con la lista blanca asignada: solo se permiten extensiones `.mp4` y `.mov`.
+Nos aseguramos de que solo se suban videos en los formatos que queremos (MP4 y MOV). Tanto el frontend como el backend lo verifican, así no colapsa nada raro.
 
-**Implementación técnica:**
-- Backend valida con Pydantic: `PresignedUrlRequest` valida `fileType` contra `.mp4` y `.mov`
-- Función `sanitize_filename()` remueve caracteres no permitidos y evita nombres peligrosos
-- La generación de la clave S3 concatena siempre el prefijo seguro `uploads/`
-- Esta validación impide inyección de nombres de archivo malformados o tipos no autorizados
+**Cómo lo hicimos:**
+- El backend valida con Pydantic que el tipo de archivo sea `.mp4` o `.mov`
+- Limpiamos los nombres de archivo para quitar caracteres peligrosos
+- Siempre generamos las claves S3 con el prefijo `uploads/` para mantener todo organizado
+- Si alguien intenta subir algo raro, lo bloqueamos antes de que llegue a S3
 
 ---
 
 ## 5. SEC-04: Límite de tamaño
 
-Se implementó un bloqueo en la interfaz (React) y en el backend (FastAPI) para rechazar cualquier archivo que supere el tamaño máximo permitido de 100 MB.
+No queremos que suban archivos gigantes. El límite es 100 MB, y lo verificamos en dos lugares: el navegador y el servidor.
 
-**Implementación técnica:**
-- El cliente React aplica validación inmediata antes de iniciar la subida
-- Solo permite extensiones `.mp4` y `.mov`
-- Rechaza archivos mayores a 100 MB
-- Muestra mensajes de error claros si la selección no cumple con los requisitos
-- Evita que archivos inválidos lleguen al backend o a S3
+**Cómo lo hicimos:**
+- React valida el tamaño antes de permitir la subida
+- Si pasas un archivo muy grande, te muestra un mensaje de error enseguida
+- El backend también verifica, por si acaso
+- Esto evita desperdiciar ancho de banda y almacenamiento
 
 ---
 
 ## 6. SEC-05: IAM de mínimo privilegio
 
-Se creó una política de IAM específica para el usuario de la aplicación que solo permite las acciones `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` y `s3:ListBucket` exclusivamente sobre el bucket `archivacloud-p11-seba`, sin usar comodines (`*`) globales.
+Nuestra aplicación solo tiene permisos para hacer lo que necesita en AWS. No le dimos acceso a todo, solo a subir, descargar y eliminar videos en nuestro bucket.
 
-**Implementación técnica:**
+**Qué permisos tiene:**
+- Subir archivos (`s3:PutObject`)
+- Descargar archivos (`s3:GetObject`)
+- Eliminar archivos (`s3:DeleteObject`)
+- Listar lo que hay en el bucket (`s3:ListBucket`)
 
-Acciones permitidas:
-- `s3:PutObject`
-- `s3:GetObject`
-- `s3:DeleteObject`
-- `s3:ListBucket`
+**Dónde pueden hacerlo:**
+- Solo en `archivacloud-p11`
+- Solo en la carpeta `uploads/`
 
-Recursos permitidos:
-- `arn:aws:s3:::archivacloud-p11`
-- `arn:aws:s3:::archivacloud-p11/uploads/*`
-
-Esto garantiza que las credenciales usadas solo pueden gestionar objetos dentro del bucket y prefijo autorizado.
+Si alguien roba las credenciales, no pueden hacer mucho más de lo que la app necesita.
 
 ---
 
 ## 7. SEC-06: S3 cerrado al público
 
-El bucket S3 tiene activada la configuración "Block Public Access". Nadie puede acceder a los videos mediante su URL directa; el acceso se realiza exclusivamente mediante URLs firmadas (Presigned URLs) temporales generadas por el backend.
+Nadie puede acceder a los videos si no tiene un enlace especial. El bucket está bloqueado al público, así que no puedes meterte a una URL cualquiera y descargar videos.
 
-**Implementación técnica:**
-- El backend genera la URL firmada con `boto3.generate_presigned_url`
-- El frontend realiza `PUT` directo al endpoint S3 usando Axios
-- La URL pública se construye con `https://archivacloud-p11.s3.us-west-2.amazonaws.com/{key}`
-- Este modelo evita que las credenciales de AWS se expongan al cliente
-- Asegura que el tráfico de subida se realice sobre TLS
+**Cómo lo hicimos:**
+- El backend genera URLs firmadas temporales (tipo "código de acceso")
+- Cuando subes o descargas, usas esa URL temporal, no tus credenciales de AWS
+- Los videos en S3 están encriptados
+- Todo viaja por HTTPS, así que nadie puede interceptar en el camino
 
 ---
 
 ## 8. SEC-07: Errores sin información sensible
 
-El backend de FastAPI utiliza `HTTPException` para devolver mensajes genéricos sin exponer el *stack trace* interno ni la estructura del código en caso de fallos.
+Cuando algo falla, no le decimos al usuario detalles técnicos que podrían ayudar a un atacante. Solo mensajes simples.
 
-**Implementación técnica:**
-- Todos los endpoints envuelven la lógica crítica en bloques `try/except`
-- Errores de AWS devuelven `HTTP 500` con mensajes genéricos (ej: "El archivo no existe")
-- No se exponen trazas de stack o detalles internos al cliente
-- Errores de validación controlados retornan códigos HTTP apropiados (400, 403, 404)
-- Protege contra la divulgación de información sensible en producción
+**Cómo lo hicimos:**
+- Si hay un error, el usuario ve algo como "El archivo no existe" o "No tienes permiso"
+- Nunca mostramos el código interno ni dónde explotó la aplicación
+- Los mensajes de error son genéricos pero útiles para quien usa la app
+- Esto evita que alguien descubra cómo funciona internamente
 
 ---
 
 ## 9. SEC-08: Encriptación en reposo
 
-El bucket de Amazon S3 almacena todos los videos encriptados por defecto utilizando el cifrado del lado del servidor gestionado por Amazon (SSE-S3).
+Los videos se guardan encriptados en S3. Aunque alguien acceda a los servidores de Amazon, no puede ver el contenido sin la clave.
 
-**Implementación técnica:**
-- Cifrado automático en el servidor S3
-- Cumplimiento de requisitos de almacenamiento seguro
-- Datos protegidos en reposo sin acción manual requerida
+**Cómo lo hicimos:**
+- S3 encripta todo automáticamente
+- Amazon maneja las claves de encriptación
+- No hay que hacer nada extra, funciona por defecto
 
 ---
 
 ## 10. SEC-09: Escaneo de dependencias
 
-Se ejecutó `pip-audit` en el backend, mitigando las alertas mediante la actualización de `pip`. En el frontend se ejecutó `npm audit`, justificando la no corrección forzada de dependencias *Moderate* en Vite para no comprometer la estabilidad del sistema con *breaking changes*.
+Todas nuestras librerías las revisamos para asegurarnos de que no tengan agujeros de seguridad conocidos.
 
-**Implementación técnica:**
-- Backend: `pip-audit` y análisis de paquetes en `requirements.txt`
-- Frontend: `npm audit` y revisión de dependencias en `package.json`
-- Los resultados se mantienen documentados en archivos de auditoría
-- Archivos de reporte: `SECURITY_REPORT_BACKEND.txt/json` y `SECURITY_REPORT_FRONTEND.txt/json`
+**Cómo lo hicimos:**
+- En el backend: `pip-audit` revisa los paquetes Python
+- En el frontend: `npm audit` revisa los paquetes Node
+- Actualizamos lo que podemos sin romper cosas
+- Los resultados están documentados en `SECURITY_REPORT_BACKEND.txt/json` y `SECURITY_REPORT_FRONTEND.txt/json`
 
 ---
 
 ## 11. SEC-10: TLS de extremo a extremo
 
-Toda la comunicación entre el backend y Amazon S3 se realiza bajo el protocolo seguro HTTPS, garantizando la encriptación de los datos en tránsito.
+Toda la comunicación que hacemos con S3 va encriptada. Nadie puede interceptar los videos en el camino.
 
-**Implementación técnica:**
-- Todas las conexiones a S3 utilizan HTTPS
-- Protección de datos durante la transmisión
-- Evita interceptación de datos en tránsito
+**Cómo lo hicimos:**
+- Siempre usamos HTTPS
+- Los datos van encriptados de un lado a otro
+- Así aunque alguien esté escuchando en la red, no ve nada útil
 
 ---
 
 ## 12. Conclusión
 
-El proyecto ArchivaCloud de la Pareja P-11 implementa de manera integral los 10 controles de seguridad obligatorios. El diseño técnico asegura que:
+ArchivaCloud está construido con seguridad desde el principio. Hemos implementado todas las 10 defensas obligatorias:
 
-- Los archivos subidos cumplen las restricciones de formato y tamaño (MP4/MOV, 100 MB máximo)
-- Las credenciales están protegidas y nunca se exponen en el repositorio
-- El acceso a S3 está limitado mediante URLs presignadas y políticas IAM restrictivas
-- La comunicación es segura de extremo a extremo (HTTPS/TLS)
-- Los errores no revelan información sensible
-- Las dependencias están auditadas regularmente
+- **Validación:** Solo aceptamos MP4 y MOV, máximo 100 MB
+- **Secretos seguros:** Las credenciales nunca ven la luz
+- **Acceso restringido:** Solo nuestra app puede usar las APIs
+- **Permisos mínimos:** AWS solo nos deja hacer lo necesario
+- **Almacenamiento seguro:** Los videos están encriptados en S3
+- **Comunicación encriptada:** Todo viaja por HTTPS
+- **Errores amables:** Si algo falla, no revelamos detalles peligrosos
+- **Dependencias limpias:** Auditamos todo regularmente
 
-Tanto el backend como el frontend operan sobre el bucket `archivacloud-p11` en la región `us-west-2` con controles de origen restrictivos y validación exhaustiva en múltiples capas.
+Basicamente, hicimos que sea difícil atacar la app sin que sea incómodo de usar.
