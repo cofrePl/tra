@@ -1,3 +1,0 @@
-up to date, audited 127 packages
-
-0 vulnerabilities

@@ -26,10 +26,10 @@ Aplicación web para gestión segura de videos que permite subir, listar, descar
 El backend requiere las siguientes variables de entorno para funcionar correctamente:
 
 ```env
-AWS_ACCESS_KEY_ID=your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
-AWS_REGION=us-west-2
-S3_BUCKET_NAME=archivacloud-p11
+Access Key: 
+Secret Key: 
+Session Token:
+AWS_REGION=us-east-1
 ```
 
 Recomendación: copiar `backend/.env.example` a `backend/.env` y no incluir el archivo `.env` en el control de versiones.
@@ -72,7 +72,7 @@ La política IAM mínima para el proyecto concede solo los permisos necesarios p
 
 ## Configuración CORS del Bucket en JSON
 
-El bucket `archivacloud-p11` debe configurar CORS para permitir únicamente los orígenes locales del frontend y los métodos usados por la aplicación:
+El bucket `archivacloud-p11-seba` debe configurar CORS para permitir únicamente los orígenes locales del frontend y los métodos usados por la aplicación:
 
 ```json
 [
@@ -181,6 +181,3 @@ tra/
 └── README.md
 ```
 
-## Notas Finales
-
-Este README está diseñado para ser completo y reproducible, siguiendo el Anexo D para la Pareja P-11. Incluye todas las secciones solicitadas, las instrucciones de ejecución del backend y frontend, y los marcadores necesarios para la documentación visual.
