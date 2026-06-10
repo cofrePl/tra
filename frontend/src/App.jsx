@@ -103,17 +103,13 @@ function App() {
     }
   }
 
-  const handleOpen = async (fileName) => {
-    try {
-      // Le pedimos al backend que genere la URL firmada de lectura
-      const response = await axios.get(`${BACKEND_URL}/download-url`, {
-        params: { filename: fileName }
-      })
-      // Abrimos esa URL segura en una pestaña nueva
-      window.open(response.data.url, '_blank')
-    } catch (error) {
-      setMessage({ text: 'No se pudo obtener el enlace del archivo.', type: 'error' })
+  const handleOpen = (fileUrl) => {
+    if (!fileUrl) {
+      setMessage({ text: 'No se pudo abrir el archivo. URL inválida.', type: 'error' })
+      return
     }
+
+    window.open(fileUrl, '_blank')
   }
 
   const handleDelete = async (key) => {
@@ -191,12 +187,11 @@ function App() {
                   <tr key={file.key} className={file.isDuplicate ? 'duplicate-row' : ''}>
                     <td>
                       {file.name}
-                      {file.isDuplicate && <span className="duplicate-label">Duplicado</span>}
                     </td>
                     <td>{formatSize(file.size)}</td>
                     <td>{formatDate(file.lastModified)}</td>
                     <td>
-                      <button onClick={() => handleOpen(file.name)} style={{ marginRight: '10px' }}>
+                      <button onClick={() => handleOpen(file.url)} style={{ marginRight: '10px' }}>
                         Abrir
                       </button>
                       <button onClick={() => handleDelete(file.key)}>

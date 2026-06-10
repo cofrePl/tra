@@ -74,6 +74,7 @@ class FileItem(BaseModel):
     size: int
     lastModified: str
     isDuplicate: bool
+    url: str
 
 
 class DeleteFileResponse(BaseModel):
@@ -104,6 +105,20 @@ def generate_presigned_url(object_key: str, expiration: int = PRESIGNED_URL_EXPI
         return presigned_url, public_url
     except Exception:
         raise HTTPException(status_code=500, detail="Error al generar la URL firmada.")
+
+
+def generate_get_presigned_url(object_key: str, expiration: int = PRESIGNED_URL_EXPIRATION) -> str:
+    try:
+        return s3_client.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": BUCKET_NAME,
+                "Key": object_key,
+            },
+            ExpiresIn=expiration,
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error al generar la URL firmada de descarga.")
 
 
 @app.get("/healthz")
@@ -147,6 +162,7 @@ async def list_files():
             if key == UPLOAD_PREFIX:
                 continue
             file_name = extract_original_filename_from_key(key)
+            file_url = generate_get_presigned_url(key)
             raw_files.append(
                 {
                     "name": file_name,
@@ -154,6 +170,7 @@ async def list_files():
                     "size": obj["Size"],
                     "lastModified": obj["LastModified"].isoformat(),
                     "etag": obj.get("ETag", "").strip('"'),
+                    "url": file_url,
                 }
             )
 
@@ -177,6 +194,7 @@ async def list_files():
                 size=file["size"],
                 lastModified=file["lastModified"],
                 isDuplicate=is_duplicate,
+                url=file["url"],
             )
         )
     return files

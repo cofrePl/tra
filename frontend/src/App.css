@@ -286,6 +286,17 @@
   border: 1px solid rgba(245, 159, 11, 0.15);
 }
 
+.duplicate-row,
+.duplicate-row td {
+  background: #ffcccc !important;
+  color: #333333 !important;
+}
+
+.duplicate-row td {
+  border-top: 1px solid #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
