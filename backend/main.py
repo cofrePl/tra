@@ -1,5 +1,6 @@
 ﻿import os
 import re
+import uuid
 from urllib.parse import quote
 
 import boto3
@@ -110,13 +111,19 @@ async def health_check():
     return {"status": "healthy"}
 
 
+def extract_original_filename_from_key(key: str) -> str:
+    file_name = key.replace(UPLOAD_PREFIX, "", 1)
+    match = re.match(r"^[0-9a-f]{32}_(.+)$", file_name)
+    return match.group(1) if match else file_name
+
+
 @app.post("/api/upload/presigned-url", response_model=PresignedUrlResponse)
 async def get_presigned_url(request: PresignedUrlRequest):
     sanitized_name = sanitize_filename(request.fileName)
     if not sanitized_name:
         raise HTTPException(status_code=400, detail="Nombre de archivo inválido.")
 
-    object_key = f"{UPLOAD_PREFIX}{sanitized_name}"
+    object_key = f"{UPLOAD_PREFIX}{uuid.uuid4().hex}_{sanitized_name}"
     presigned_url, public_url = generate_presigned_url(object_key)
 
     return PresignedUrlResponse(
@@ -139,7 +146,7 @@ async def list_files():
             key = obj["Key"]
             if key == UPLOAD_PREFIX:
                 continue
-            file_name = key.replace(UPLOAD_PREFIX, "", 1)
+            file_name = extract_original_filename_from_key(key)
             raw_files.append(
                 {
                     "name": file_name,
