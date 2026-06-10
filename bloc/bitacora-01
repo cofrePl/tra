@@ -1,0 +1,9 @@
+Sprint N°: 1
+
+Fecha: Lunes 1 de Junio 2026
+
+Lo que hicimos esta semana: Dejamos andando la base del proyecto. Levantamos el frontend con React, el backend con FastAPI y logramos conectar la aplicación con nuestro bucket de Amazon S3 para subir archivos.
+
+Problemas encontrados: El backend se caía de la nada y nos tiraba un error al intentar listar los videos guardados en S3.
+
+Cómo los resolvimos: Nos dimos cuenta de que las credenciales del laboratorio de AWS Academy vencen cada ciertas horas. Tuvimos que sacar un token nuevo, actualizar el archivo .env y reiniciar el servidor.

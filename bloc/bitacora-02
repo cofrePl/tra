@@ -1,0 +1,9 @@
+Sprint N°: 2
+
+Fecha: Jueves 4 de Junio de 2026
+
+Lo que hicimos esta semana: Le pusimos las validaciones para que solo acepte videos .mp4 y .mov de máximo 100 MB. También avanzamos con la documentación de seguridad (controles SEC-01 al SEC-06).
+
+Problemas encontrados: Tuvimos un bloqueo súper grave en GitHub. No nos dejaba hacer push porque nos equivocamos y dejamos las contraseñas reales de AWS escritas en el README.md.
+
+Cómo los resolvimos: Limpiamos el historial de Git local con un reset para borrar el rastro de las claves, cambiamos los datos por contraseñas de ejemplo en el texto y volvimos a subir el código limpio.

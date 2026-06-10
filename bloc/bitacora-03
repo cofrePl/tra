@@ -1,0 +1,9 @@
+Sprint N°: 3
+
+Fecha: Viernes 7 de Junio de 2026
+
+Lo que hicimos esta semana: Nos enfocamos en limpiar los archivos del proyecto y hacerlo portátil para poder programar en distintos computadores sin que se rompan las rutas.
+
+Problemas encontrados: Al pasar el proyecto a otro computador, el backend no quería arrancar. El entorno virtual (venv) seguía buscando la ruta del disco duro del PC del laboratorio y daba error de sistema.
+
+Cómo los resolvimos: En vez de hacer todo de nuevo, nos saltamos ese entorno dañado. Instalamos las librerías del requirements.txt directo en el Python global del computador nuevo y el servidor levantó sin problemas.

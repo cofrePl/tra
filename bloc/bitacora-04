@@ -1,0 +1,9 @@
+Sprint N°: 4
+
+Fecha: Miércoles 10 de Junio de 2026
+
+Lo que hicimos esta semana: Finalizamos la lógica de la Pareja P-11. Modificamos el guardado en S3 para que le asigne un código único (UUID) a cada archivo, evitando que S3 sobreescriba videos que tengan el mismo nombre. En la UI, cambiamos la etiqueta de texto por un resaltado amarillo claro en toda la fila del duplicado.
+
+Problemas encontrados: Al agregar el UUID en el backend para evitar la sobreescritura, la tabla leía el mismo archivo para distintos videos que compartían nombre, ya que el backend "limpiaba" el UUID y el reproductor de React no sabía diferenciarlos.
+
+Cómo los resolvimos: Refactorizamos el endpoint GET /api/files de FastAPI. Ahora devuelve dos campos separados: display_name (el nombre limpio para que la tabla y el detector de duplicados funcionen) y url (la ruta firmada con el UUID real para que el reproductor cargue el video correcto).
