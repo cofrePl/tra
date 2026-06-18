@@ -1,0 +1,10 @@
+Sprint N°: 5 
+
+Fecha: Jueves 18 de Junio de 2026
+
+Lo que hicimos esta semana: Implementamos el último requerimiento de la profesora integrando una base de datos NoSQL. Creamos la tabla videos_cloud en AWS DynamoDB para guardar los metadatos de los archivos (UUID, nombre y fecha). Ahora, mientras el video pesado se va a S3, el backend anota el registro automáticamente en DynamoDB.
+
+Problemas encontrados: Al cambiar el código para que la lista de videos se leyera desde DynamoDB en vez de S3, el backend se cayó con un error 500 Internal Server Error. El sistema fallaba por un ValidationError, ya que el campo de duplicados exigía un valor booleano (True o False), pero al leer desde la tabla llegaba como un texto vacío.
+
+Cómo los resolvimos: Ajustamos la función de lectura en FastAPI (list_files). Le pusimos una regla para que, si el registro en DynamoDB viene vacío o no tiene el campo de duplicado, el backend asigne automáticamente el valor False por defecto. Con eso la validación pasó y la tabla web volvió a cargar.
+

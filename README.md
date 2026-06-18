@@ -16,8 +16,8 @@ Aplicación web para gestión segura de videos que permite subir, listar, descar
 
 - Formato permitido: **MP4 / MOV**
 - Tamaño máximo: **100 MB**
-- Bucket S3: **archivacloud-p11**
-- Región AWS: **us-west-2**
+- Bucket S3: **archivacloud-p11-seba**
+- Región AWS: **us-east-1**
 - Prefijo seguro: **uploads/**
 - Origen frontend permitido: **http://localhost:5173**
 
@@ -26,19 +26,31 @@ Aplicación web para gestión segura de videos que permite subir, listar, descar
 El backend requiere las siguientes variables de entorno para funcionar correctamente:
 
 ```env
-Access Key: 
-Secret Key: 
-Session Token:
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...   
 AWS_REGION=us-east-1
 ```
 
-Recomendación: copiar `backend/.env.example` a `backend/.env` y no incluir el archivo `.env` en el control de versiones.
 
-Para ver el prompt exacto y la guía paso a paso de AWS Academy, consulta `docs/aws-s3-p11-setup.md`.
+
+## Integración con DynamoDB
+
+El backend usa DynamoDB para almacenar los metadatos de los videos subidos. La tabla configurada es `videos_cloud` y su clave de partición es `file_id` (String).
+
+Cada registro en DynamoDB incluye:
+
+- `file_id`: UUID único del archivo
+- `display_name`: nombre original limpio del video
+- `upload_date`: fecha y hora de subida en formato ISO
+- `s3_key`: clave del objeto en S3
+- `size`: tamaño del archivo en bytes
+
+El endpoint `POST /api/upload/presigned-url` inserta el registro en DynamoDB y genera la URL firmada de subida a S3. El endpoint `GET /api/files` lee los registros desde DynamoDB y genera URLs firmadas de lectura para cada video.
 
 ## Política IAM Mínima en Formato JSON
 
-La política IAM mínima para el proyecto concede solo los permisos necesarios para la lectura, escritura y eliminación en el prefijo `uploads/` del bucket `archivacloud-p11`:
+La política IAM mínima para el proyecto concede solo los permisos necesarios para la lectura, escritura y eliminación en el prefijo `uploads/` del bucket `archivacloud-p11-seba`:
 
 ```json
 {
@@ -51,7 +63,7 @@ La política IAM mínima para el proyecto concede solo los permisos necesarios p
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::archivacloud-p11"
+        "arn:aws:s3:::archivacloud-p11-seba"
       ]
     },
     {
@@ -63,7 +75,7 @@ La política IAM mínima para el proyecto concede solo los permisos necesarios p
         "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::archivacloud-p11/uploads/*"
+        "arn:aws:s3:::archivacloud-p11-seba/uploads/*"
       ]
     }
   ]
@@ -160,7 +172,7 @@ tra/
 ├── backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── .env.example
+│   ├── .env
 │   ├── SECURITY_REPORT_BACKEND.json
 │   └── SECURITY_REPORT_BACKEND.txt
 ├── frontend/
