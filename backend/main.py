@@ -1,6 +1,7 @@
 ﻿import os
 import re
 import uuid
+from datetime import datetime
 from urllib.parse import quote
 
 import boto3
@@ -39,6 +40,16 @@ s3_client = boto3.client(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     aws_session_token=os.getenv("AWS_SESSION_TOKEN")
 )
+
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name=AWS_REGION,
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    aws_session_token=os.getenv("AWS_SESSION_TOKEN")
+)
+
+table = dynamodb.Table("videos_cloud")
 
 
 class PresignedUrlRequest(BaseModel):
@@ -138,8 +149,22 @@ async def get_presigned_url(request: PresignedUrlRequest):
     if not sanitized_name:
         raise HTTPException(status_code=400, detail="Nombre de archivo inválido.")
 
-    object_key = f"{UPLOAD_PREFIX}{uuid.uuid4().hex}_{sanitized_name}"
+    file_id = uuid.uuid4().hex
+    object_key = f"{UPLOAD_PREFIX}{file_id}_{sanitized_name}"
     presigned_url, public_url = generate_presigned_url(object_key)
+
+    try:
+        table.put_item(
+            Item={
+                "file_id": file_id,
+                "display_name": sanitized_name,
+                "upload_date": datetime.utcnow().isoformat(),
+                "s3_key": object_key,
+                "size": request.fileSize,
+            }
+        )
+    except ClientError:
+        raise HTTPException(status_code=500, detail="Error al insertar el registro en DynamoDB.")
 
     return PresignedUrlResponse(
         presignedUrl=presigned_url,
@@ -151,28 +176,36 @@ async def get_presigned_url(request: PresignedUrlRequest):
 @app.get("/api/files", response_model=list[FileItem])
 async def list_files():
     raw_files = []
-    paginator = s3_client.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=BUCKET_NAME, Prefix=UPLOAD_PREFIX)
+    scan_kwargs = {}
 
-    for page in pages:
-        if "Contents" not in page:
-            continue
-        for obj in page["Contents"]:
-            key = obj["Key"]
-            if key == UPLOAD_PREFIX:
-                continue
-            file_name = extract_original_filename_from_key(key)
-            file_url = generate_get_presigned_url(key)
-            raw_files.append(
-                {
-                    "name": file_name,
-                    "key": key,
-                    "size": obj["Size"],
-                    "lastModified": obj["LastModified"].isoformat(),
-                    "etag": obj.get("ETag", "").strip('"'),
-                    "url": file_url,
-                }
-            )
+    try:
+        while True:
+            response = table.scan(**scan_kwargs)
+            for item in response.get("Items", []):
+                key = item.get("s3_key")
+                if not key:
+                    continue
+
+                file_name = item.get("display_name") or extract_original_filename_from_key(key)
+                file_url = generate_get_presigned_url(key)
+
+                raw_files.append(
+                    {
+                        "name": file_name,
+                        "key": key,
+                        "size": item.get("size", 0),
+                        "lastModified": item.get("upload_date", ""),
+                        "etag": "",
+                        "url": file_url,
+                    }
+                )
+
+            last_key = response.get("LastEvaluatedKey")
+            if not last_key:
+                break
+            scan_kwargs["ExclusiveStartKey"] = last_key
+    except ClientError:
+        raise HTTPException(status_code=500, detail="Error al leer los registros de DynamoDB.")
 
     name_counts = {}
     etag_counts = {}
@@ -185,7 +218,7 @@ async def list_files():
     for file in raw_files:
         is_duplicate = (
             name_counts.get(file["name"], 0) > 1 or
-            (file["etag"] and etag_counts.get(file["etag"], 0) > 1)
+            (bool(file["etag"]) and etag_counts.get(file["etag"], 0) > 1)
         )
         files.append(
             FileItem(
@@ -193,7 +226,7 @@ async def list_files():
                 key=file["key"],
                 size=file["size"],
                 lastModified=file["lastModified"],
-                isDuplicate=is_duplicate,
+                isDuplicate=bool(is_duplicate),
                 url=file["url"],
             )
         )
@@ -251,7 +284,3 @@ def get_download_url(filename: str):
         return {"url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/healthz")
-async def health_check():
-    return {"status": "ok", "message": "El servidor está funcionando correctamente"}        
